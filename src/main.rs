@@ -1,5 +1,5 @@
 use anyhow::Result;
-use newsletter::run;
+use newsletter::startup::run;
 
 #[tokio::main]
 async fn main() -> Result<()> {
