@@ -3,5 +3,6 @@ use newsletter::run;
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    run().await
+    run()?.await?;
+    Ok(())
 }
