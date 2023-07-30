@@ -15,6 +15,7 @@ name = "newsletter"
 actix-web = "4.3.1"
 anyhow = "1.0.72"
 serde = { version = "1.0.178", features = ["derive"] }
+sqlx = { version = "0.7.1", default-features = false, features = ["runtime-tokio-rustls", "macros", "postgres", "uuid", "chrono", "migrate"] }
 tokio = { version = "1.29.1", features = ["macros", "rt-multi-thread"] }
 
 [dev-dependencies]
