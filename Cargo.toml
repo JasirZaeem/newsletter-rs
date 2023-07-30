@@ -16,6 +16,7 @@ actix-web = "4.3.1"
 anyhow = "1.0.72"
 chrono = { version = "0.4.26", default-features = false, features = ["clock"] }
 config = "0.13.3"
+env_logger = "0.10.0"
 serde = { version = "1.0.178", features = ["derive"] }
 sqlx = { version = "0.7.1", default-features = false, features = ["runtime-tokio-rustls", "macros", "postgres", "uuid", "chrono", "migrate"] }
 tokio = { version = "1.29.1", features = ["macros", "rt-multi-thread"] }
