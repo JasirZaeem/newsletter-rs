@@ -7,7 +7,7 @@ use newsletter::telemetry::{get_subscriber, init_subscriber};
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    let subscriber = get_subscriber("newsletter", "info");
+    let subscriber = get_subscriber("newsletter", "info", std::io::stdout);
     init_subscriber(subscriber)?;
 
     let configuration = get_configuration().context("Failed to read configuration.")?;

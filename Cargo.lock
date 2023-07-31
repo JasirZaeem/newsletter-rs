@@ -1269,6 +1269,7 @@ dependencies = [
  "anyhow",
  "chrono",
  "config",
+ "once_cell",
  "reqwest",
  "serde",
  "sqlx",
