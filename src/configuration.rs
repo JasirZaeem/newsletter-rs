@@ -1,10 +1,22 @@
-use anyhow::Result;
+use anyhow::{anyhow, Context, Result};
 use secrecy::{ExposeSecret, Secret};
 
 #[derive(serde::Deserialize)]
 pub struct Settings {
+    pub application: ApplicationSettings,
     pub database: DatabaseSettings,
-    pub application_port: u16,
+}
+
+impl ApplicationSettings {
+    pub fn address(&self) -> String {
+        format!("{}:{}", self.host, self.port)
+    }
+}
+
+#[derive(serde::Deserialize)]
+pub struct ApplicationSettings {
+    pub port: u16,
+    pub host: String,
 }
 
 #[derive(serde::Deserialize)]
@@ -39,11 +51,52 @@ impl DatabaseSettings {
     }
 }
 
+pub enum Environment {
+    Local,
+    Production,
+}
+
+impl Environment {
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            Environment::Local => "local",
+            Environment::Production => "production",
+        }
+    }
+}
+
+impl TryFrom<String> for Environment {
+    type Error = anyhow::Error;
+
+    fn try_from(value: String) -> Result<Self> {
+        match value.as_ref() {
+            "local" => Ok(Self::Local),
+            "production" => Ok(Self::Production),
+            _ => Err(anyhow!(
+                "Unknown environment {}. Use `local` or `production`.",
+                value
+            )
+            .into()),
+        }
+    }
+}
+
 pub fn get_configuration() -> Result<Settings> {
+    let base_path = std::env::current_dir().context("Failed to determine current directory.")?;
+    let configuration_directory = base_path.join("configuration");
+
+    let environment: Environment = std::env::var("APP_ENVIRONMENT")
+        .unwrap_or_else(|_| "local".into())
+        .try_into()
+        .context("Failed to parse APP_ENVIRONMENT.")?;
+
+    let environment_filename = format!("{}.yaml", environment.as_str());
     let settings = config::Config::builder()
-        .add_source(config::File::new(
-            "configuration.yaml",
-            config::FileFormat::Yaml,
+        .add_source(config::File::from(
+            configuration_directory.join("base.yaml"),
+        ))
+        .add_source(config::File::from(
+            configuration_directory.join(environment_filename),
         ))
         .build()?
         .try_deserialize::<Settings>()?;

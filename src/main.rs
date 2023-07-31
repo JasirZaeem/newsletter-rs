@@ -12,11 +12,10 @@ async fn main() -> Result<()> {
 
     let configuration = get_configuration().context("Failed to read configuration.")?;
     let connection_pool =
-        PgPool::connect(configuration.database.connection_string().expose_secret())
-            .await
+        PgPool::connect_lazy(configuration.database.connection_string().expose_secret())
             .context("Failed to connect to Postgres.")?;
 
-    let address = format!("127.0.0.1:{}", configuration.application_port);
+    let address = configuration.application.address();
     let listener = std::net::TcpListener::bind(address)?;
     run(listener, connection_pool)?.await?;
     Ok(())
