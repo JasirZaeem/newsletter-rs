@@ -1,0 +1,85 @@
+name: Rust
+
+on: [ push, pull_request ]
+
+env:
+  CARGO_TERM_COLOR: always
+  SQLX_VERSION: 0.7.1
+  SQLX_FEATURES: "rustls,postgres"
+
+jobs:
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: password
+          POSTGRES_DB: postgres
+        ports:
+          - 5432:5432
+    steps:
+      - uses: actions/checkout@v3
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Rust Cache
+        uses: Swatinem/rust-cache@v2
+        with:
+          key: sqlx-${{ env.SQLX_VERSION }}
+      - name: Install sqlx-cli
+        run:
+          cargo install sqlx-cli
+          --version=${{ env.SQLX_VERSION }}
+          --no-default-features
+          --features=${{ env.SQLX_FEATURES }}
+          --locked
+      - name: Migrate database
+        run: SKIP_DOCKER=true ./scripts/init_db.sh
+      - name: Run tests
+        run: RUSTFLAGS="--cfg uuid_unstable" cargo test
+
+  fmt:
+    name: Format
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt
+      - uses: Swatinem/rust-cache@v2
+      - name: Check formatting
+        run: cargo fmt --check
+
+  clippy:
+    name: Lint
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: password
+          POSTGRES_DB: postgres
+        ports:
+          - 5432:5432
+    steps:
+      - uses: actions/checkout@v3
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+      - name: Rust Cache
+        uses: Swatinem/rust-cache@v2
+        with:
+          key: sqlx-${{ env.SQLX_VERSION }}
+      - name: Install sqlx-cli
+        run:
+          cargo install sqlx-cli
+          --version=${{ env.SQLX_VERSION }}
+          --no-default-features
+          --features=${{ env.SQLX_FEATURES }}
+          --locked
+      - name: Migrate database
+        run: SKIP_DOCKER=true ./scripts/init_db.sh
+      - name: Linting
+        run: RUSTFLAGS="--cfg uuid_unstable" cargo clippy -- -D warnings
