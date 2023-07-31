@@ -12,7 +12,7 @@ async fn main() -> Result<()> {
 
     let configuration = get_configuration().context("Failed to read configuration.")?;
     let connection_pool =
-        PgPool::connect(&configuration.database.connection_string().expose_secret())
+        PgPool::connect(configuration.database.connection_string().expose_secret())
             .await
             .context("Failed to connect to Postgres.")?;
 
