@@ -1,8 +1,8 @@
-use sqlx::{Connection, Executor, PgConnection, PgPool};
-use newsletter::configuration::{DatabaseSettings, get_configuration};
+use newsletter::configuration::{get_configuration, DatabaseSettings};
 use newsletter::startup::run;
 use newsletter::telemetry::{get_subscriber, init_subscriber};
 use once_cell::sync::Lazy;
+use sqlx::{Connection, Executor, PgConnection, PgPool};
 
 static TRACING: Lazy<()> = Lazy::new(|| {
     let default_filter_level = "info";
@@ -13,13 +13,15 @@ static TRACING: Lazy<()> = Lazy::new(|| {
             subscriber_name,
             default_filter_level,
             std::io::stdout,
-        )).expect("Failed to initialize subscriber.");
+        ))
+        .expect("Failed to initialize subscriber.");
     } else {
         init_subscriber(get_subscriber(
             subscriber_name,
             default_filter_level,
             std::io::sink,
-        )).expect("Failed to initialize subscriber.");
+        ))
+        .expect("Failed to initialize subscriber.");
     }
 });
 
@@ -38,8 +40,7 @@ async fn spawn_app() -> TestApp {
     let mut configuration = get_configuration().expect("Failed to read configuration.");
     configuration.database.name = format!("newsletter_test_{}", uuid::Uuid::now_v7());
 
-    let connection_pool = configure_database(&configuration.database)
-        .await;
+    let connection_pool = configure_database(&configuration.database).await;
 
     let server = run(listener, connection_pool.clone()).expect("Failed to bind address.");
     let _ = tokio::spawn(server);
@@ -50,19 +51,16 @@ async fn spawn_app() -> TestApp {
 }
 
 pub async fn configure_database(config: &DatabaseSettings) -> PgPool {
-    let mut connection = PgConnection::connect(
-        &config.connection_string_without_db()
-    )
+    let mut connection = PgConnection::connect(&config.connection_string_without_db())
         .await
         .expect("Failed to connect to Postgres.");
 
-    connection.execute(format!(r#"CREATE DATABASE "{}";"#, config.name).as_str())
+    connection
+        .execute(format!(r#"CREATE DATABASE "{}";"#, config.name).as_str())
         .await
         .expect("Failed to create database.");
 
-    let connection_pool = PgPool::connect(
-        &config.connection_string()
-    )
+    let connection_pool = PgPool::connect(&config.connection_string())
         .await
         .expect("Failed to connect to Postgres.");
 
@@ -139,7 +137,8 @@ async fn subscribe_returns_a_400_when_data_is_missing() {
             400,
             response.status().as_u16(),
             "The API did not fail with 400 Bad Request when the payload was {} ({}).",
-            error_message, invalid_body
+            error_message,
+            invalid_body
         );
     }
 }

@@ -1,9 +1,8 @@
 use anyhow::{Context, Result};
-use sqlx::{PgPool};
 use newsletter::configuration::get_configuration;
 use newsletter::startup::run;
 use newsletter::telemetry::{get_subscriber, init_subscriber};
-
+use sqlx::PgPool;
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -11,9 +10,7 @@ async fn main() -> Result<()> {
     init_subscriber(subscriber)?;
 
     let configuration = get_configuration().context("Failed to read configuration.")?;
-    let connection_pool = PgPool::connect(
-        &configuration.database.connection_string()
-    )
+    let connection_pool = PgPool::connect(&configuration.database.connection_string())
         .await
         .context("Failed to connect to Postgres.")?;
 
