@@ -1,6 +1,5 @@
 use newsletter::configuration::{get_configuration, DatabaseSettings};
-use newsletter::email_client::EmailClient;
-use newsletter::startup::run;
+use newsletter::startup::{get_connection_pool, Application};
 use newsletter::telemetry::{get_subscriber, init_subscriber};
 use once_cell::sync::Lazy;
 use secrecy::ExposeSecret;
@@ -35,33 +34,24 @@ pub struct TestApp {
 pub async fn spawn_app() -> TestApp {
     Lazy::force(&TRACING);
 
-    let listener = std::net::TcpListener::bind("127.0.0.1:0").expect("Failed to bind random port.");
-    let port = listener.local_addr().unwrap().port();
-    let address = format!("http://127.0.0.1:{}", port);
+    let configuration = {
+        let mut c = get_configuration().expect("Failed to read configuration.");
+        c.database.name = format!("newsletter_test_{}", uuid::Uuid::now_v7());
+        c.application.port = 0;
+        c
+    };
 
-    let mut configuration = get_configuration().expect("Failed to read configuration.");
-    configuration.database.name = format!("newsletter_test_{}", uuid::Uuid::now_v7());
+    configure_database(&configuration.database).await;
 
-    let connection_pool = configure_database(&configuration.database).await;
+    let application =
+        Application::new(configuration.clone()).expect("Failed to build application.");
+    let address = format!("http://localhost:{}", application.port());
 
-    let sender_email = configuration
-        .email_client
-        .sender()
-        .expect("Invalid sender email address.");
-    let timeout = configuration.email_client.timeout();
-    let email_client = EmailClient::new(
-        configuration.email_client.base_url,
-        sender_email,
-        configuration.email_client.authorization_token,
-        timeout,
-    );
-
-    let server =
-        run(listener, connection_pool.clone(), email_client).expect("Failed to bind address.");
-    let _ = tokio::spawn(server);
+    let _ = tokio::spawn(application.run_until_stopped());
     TestApp {
         address,
-        connection_pool,
+        connection_pool: get_connection_pool(&configuration)
+            .expect("Failed to connect to Postgres."),
     }
 }
 
