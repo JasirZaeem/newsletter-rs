@@ -1,5 +1,6 @@
 use anyhow::{anyhow, Context, Result};
 use secrecy::{ExposeSecret, Secret};
+use serde_aux::field_attributes::deserialize_number_from_string;
 
 #[derive(serde::Deserialize)]
 pub struct Settings {
@@ -15,6 +16,7 @@ impl ApplicationSettings {
 
 #[derive(serde::Deserialize)]
 pub struct ApplicationSettings {
+    #[serde(deserialize_with = "deserialize_number_from_string")]
     pub port: u16,
     pub host: String,
 }
@@ -24,6 +26,7 @@ pub struct DatabaseSettings {
     pub username: String,
     pub password: Secret<String>,
     pub host: String,
+    #[serde(deserialize_with = "deserialize_number_from_string")]
     pub port: u16,
     pub name: String,
 }
@@ -76,7 +79,7 @@ impl TryFrom<String> for Environment {
                 "Unknown environment {}. Use `local` or `production`.",
                 value
             )
-            .into()),
+                .into()),
         }
     }
 }
@@ -98,6 +101,11 @@ pub fn get_configuration() -> Result<Settings> {
         .add_source(config::File::from(
             configuration_directory.join(environment_filename),
         ))
+        .add_source(
+            config::Environment::with_prefix("APP")
+                .prefix_separator("_")
+                .separator("__"),
+        )
         .build()?
         .try_deserialize::<Settings>()?;
     Ok(settings)
