@@ -79,7 +79,7 @@ impl TryFrom<String> for Environment {
                 "Unknown environment {}. Use `local` or `production`.",
                 value
             )
-                .into()),
+            .into()),
         }
     }
 }
