@@ -16,6 +16,20 @@ async fn subscribe_returns_a_200_for_valid_form_data() {
     let response = app.post_subscriptions(body.into()).await;
 
     assert_eq!(200, response.status().as_u16());
+}
+
+#[tokio::test]
+async fn subscribe_persists_the_new_subscriber() {
+    let app = spawn_app().await;
+    let body = "name=my%20name&email=name%40example.com";
+
+    Mock::given(path("/email"))
+        .and(method("POST"))
+        .respond_with(ResponseTemplate::new(200))
+        .mount(&app.email_server)
+        .await;
+
+    app.post_subscriptions(body.into()).await;
 
     let saved = sqlx::query!("SELECT email, name, confirmed_at FROM subscription",)
         .fetch_one(&app.connection_pool)
