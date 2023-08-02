@@ -98,8 +98,7 @@ impl TryFrom<String> for Environment {
             _ => Err(anyhow!(
                 "Unknown environment {}. Use `local` or `production`.",
                 value
-            )
-            .into()),
+            )),
         }
     }
 }

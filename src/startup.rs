@@ -56,12 +56,14 @@ pub fn run(
     email_client: EmailClient,
 ) -> Result<Server> {
     let connection_pool = web::Data::new(connection_pool);
+    let email_client = web::Data::new(email_client);
     let server = HttpServer::new(move || {
         App::new()
             .wrap(TracingLogger::default())
             .route("/health_check", web::get().to(health_check))
             .route("/subscriptions", web::post().to(subscribe))
             .app_data(connection_pool.clone())
+            .app_data(email_client.clone())
     })
     .listen(listener)?
     .run();

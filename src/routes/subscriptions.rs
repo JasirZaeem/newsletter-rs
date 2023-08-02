@@ -1,4 +1,5 @@
 use crate::domain::NewSubscriber;
+use crate::email_client::EmailClient;
 use actix_web::{web, HttpResponse};
 use anyhow::{Error, Result};
 use chrono::Utc;
@@ -23,26 +24,44 @@ impl TryFrom<FormData> for NewSubscriber {
 }
 
 #[tracing::instrument(
-name = "Adding a new subscriber.",
-skip(form, connection_pool),
-fields(
-subscriber_email = % form.email,
-subscriber_name = % form.name
-)
+    name = "Adding a new subscriber.",
+    skip(form, connection_pool, email_client),
+    fields(
+        subscriber_email = % form.email,
+        subscriber_name = % form.name
+    )
 )]
 pub async fn subscribe(
     form: web::Form<FormData>,
     connection_pool: web::Data<PgPool>,
+    email_client: web::Data<EmailClient>,
 ) -> HttpResponse {
     let new_subscriber = match form.0.try_into() {
         Ok(new_subscriber) => new_subscriber,
         Err(e) => return HttpResponse::BadRequest().body(format!("{}", e)),
     };
 
-    match insert_subscriber(&connection_pool, &new_subscriber).await {
-        Ok(_) => HttpResponse::Ok().finish(),
-        Err(_) => HttpResponse::InternalServerError().finish(),
+    if insert_subscriber(&connection_pool, &new_subscriber)
+        .await
+        .is_err()
+    {
+        return HttpResponse::InternalServerError().finish();
     }
+
+    if email_client
+        .send_email(
+            new_subscriber.email,
+            "Welcome!",
+            "Welcome to our newsletter!",
+            "Welcome to our newsletter!",
+        )
+        .await
+        .is_err()
+    {
+        return HttpResponse::InternalServerError().finish();
+    }
+
+    HttpResponse::Ok().finish()
 }
 
 #[tracing::instrument(

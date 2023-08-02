@@ -4,6 +4,7 @@ use newsletter::telemetry::{get_subscriber, init_subscriber};
 use once_cell::sync::Lazy;
 use secrecy::ExposeSecret;
 use sqlx::{Connection, Executor, PgConnection, PgPool};
+use wiremock::MockServer;
 
 static TRACING: Lazy<()> = Lazy::new(|| {
     let default_filter_level = "info";
@@ -29,13 +30,14 @@ static TRACING: Lazy<()> = Lazy::new(|| {
 pub struct TestApp {
     pub address: String,
     pub connection_pool: PgPool,
+    pub email_server: MockServer,
 }
 
 impl TestApp {
     pub async fn post_subscriptions(&self, body: String) -> reqwest::Response {
         reqwest::Client::new()
             .post(&format!("{}/subscriptions", &self.address))
-            .header("Content-Type", "application/json")
+            .header("Content-Type", "application/x-www-form-urlencoded")
             .body(body)
             .send()
             .await
@@ -46,10 +48,13 @@ impl TestApp {
 pub async fn spawn_app() -> TestApp {
     Lazy::force(&TRACING);
 
+    let email_server = MockServer::start().await;
+
     let configuration = {
         let mut c = get_configuration().expect("Failed to read configuration.");
         c.database.name = format!("newsletter_test_{}", uuid::Uuid::now_v7());
         c.application.port = 0;
+        c.email_client.base_url = email_server.uri();
         c
     };
 
@@ -64,6 +69,7 @@ pub async fn spawn_app() -> TestApp {
         address,
         connection_pool: get_connection_pool(&configuration)
             .expect("Failed to connect to Postgres."),
+        email_server,
     }
 }
 
