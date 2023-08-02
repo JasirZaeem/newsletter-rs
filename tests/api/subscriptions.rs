@@ -16,13 +16,14 @@ async fn subscribe_returns_a_200_for_valid_form_data() {
 
     assert_eq!(200, response.status().as_u16());
 
-    let saved = sqlx::query!("SELECT email, name FROM subscription",)
+    let saved = sqlx::query!("SELECT email, name, confirmed_at FROM subscription",)
         .fetch_one(&app.connection_pool)
         .await
         .expect("Failed to fetch saved subscription.");
 
     assert_eq!(saved.email, "name@example.com");
     assert_eq!(saved.name, "my name");
+    assert_eq!(saved.confirmed_at, None);
 }
 
 #[tokio::test]
